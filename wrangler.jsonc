@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tollgate",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    // The dashboard is a single-page app; the gateway API and the dashboard's API reach the Worker.
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/v1/*", "/api/*"]
+  },
+  // Workers AI: the upstream that needs no key, and the embedding model for the semantic cache.
+  "ai": { "binding": "AI" },
+  "vectorize": [{ "binding": "VECTORS", "index_name": "tollgate-cache" }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tollgate",
+      "database_id": "23751de6-17ca-4d22-83ac-c5aa7b3f0410",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "kv_namespaces": [{ "binding": "CACHE", "id": "dfe0746be42844169c7d7c1349eebe76" }],
+  "durable_objects": {
+    "bindings": [
+      // One object per API key (per visitor for the demo key): its rate limit and daily budget.
+      { "name": "GATES", "class_name": "KeyGate" },
+      // One object for the whole gateway: the circuit breaker state of every upstream.
+      { "name": "BREAKERS", "class_name": "Breaker" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["KeyGate", "Breaker"] }],
+  // Daily: delete old traces and expired cache entries.
+  "triggers": { "crons": ["17 3 * * *"] },
+  "vars": {
+    "FIRST_TOKEN_TIMEOUT_MS": "12000",
+    "TOTAL_TIMEOUT_MS": "60000"
+  },
+  "observability": { "enabled": true }
+}

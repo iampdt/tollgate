@@ -1,0 +1,8 @@
+run 1: searchable after about 26 s
+run 2: searchable after about 57 s
+run 3: searchable after about 62 s
+run 4: searchable after about 45 s
+run 5: searchable after about 41 s
+run 6: searchable after about 17 s
+
+min 17 s, max 62 s (polled every 2 s)

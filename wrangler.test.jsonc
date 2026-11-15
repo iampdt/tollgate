@@ -1,0 +1,23 @@
+{
+  // The configuration the tests run against: everything local, no Workers AI and no Vectorize
+  // (the gateway then uses its built-in word-hashing embedder and an in-memory index), and
+  // short timeouts so the timeout paths run in milliseconds.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tollgate-test",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-11-01",
+  "d1_databases": [{ "binding": "DB", "database_name": "tollgate-test", "database_id": "00000000-0000-0000-0000-000000000000" }],
+  "kv_namespaces": [{ "binding": "CACHE", "id": "00000000000000000000000000000000" }],
+  "durable_objects": {
+    "bindings": [
+      { "name": "GATES", "class_name": "KeyGate" },
+      { "name": "BREAKERS", "class_name": "Breaker" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["KeyGate", "Breaker"] }],
+  "vars": {
+    "FIRST_TOKEN_TIMEOUT_MS": "150",
+    "TOTAL_TIMEOUT_MS": "2000",
+    "ADMIN_TOKEN": "test-admin-token"
+  }
+}
