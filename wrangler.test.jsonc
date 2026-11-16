@@ -20,6 +20,6 @@
     "TOTAL_TIMEOUT_MS": "2000",
     "ADMIN_TOKEN": "test-admin-token",
     // Makes one provider outside the demo key's reach "configured". No test calls it.
-    "GEMINI_API_KEY": "not-a-real-key"
+    "OPENAI_API_KEY": "not-a-real-key"
   }
 }

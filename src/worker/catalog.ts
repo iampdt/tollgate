@@ -47,7 +47,9 @@ export const MODELS: Record<TargetId, Model> = {
   "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast": { price: { input: 0.293, output: 2.253 } },
   "groq/openai/gpt-oss-20b": { price: { input: 0.075, output: 0.3 }, extra: LOW_EFFORT, thinkingAllowance: 160 },
   "groq/openai/gpt-oss-120b": { price: { input: 0.15, output: 0.6 }, extra: LOW_EFFORT, thinkingAllowance: 160 },
-  "gemini/gemini-3.5-flash-lite": { price: { input: 0.3, output: 2.5 }, extra: LOW_EFFORT },
+  // "low" still let Gemini think through a 200-token limit and return almost nothing;
+  // "none" is rejected for this model. "minimal" answers within whatever limit it is given.
+  "gemini/gemini-3.5-flash-lite": { price: { input: 0.3, output: 2.5 }, extra: { reasoning_effort: "minimal" } },
   "openai/gpt-4.1-mini": { price: { input: 0.4, output: 1.6 } },
   "openrouter/meta-llama/llama-3.3-70b-instruct:free": { price: FREE },
   "mock/echo": { price: FREE },
@@ -89,12 +91,16 @@ export const ROUTES: Record<string, Route> = {
     targets: [GROQ_SMALL, SMALL, MEDIUM],
   },
   smart: {
-    description: "Larger free models from three providers.",
-    targets: [GEMINI, GROQ_LARGE, LARGE, MEDIUM],
+    description: "Larger free models from three providers, quickest first.",
+    targets: [GROQ_LARGE, LARGE, GEMINI, MEDIUM],
+  },
+  gemini: {
+    description: "Gemini's free tier first, which rate-limits bursts, with Groq and Cloudflare behind it.",
+    targets: [GEMINI, GROQ_LARGE, LARGE],
   },
   premium: {
-    description: "A paid model first, free ones behind it. Not available to the demo key.",
-    targets: ["openai/gpt-4.1-mini", GEMINI, GROQ_LARGE, LARGE],
+    description: "A paid model first, free ones behind it. The demo key skips the paid one.",
+    targets: ["openai/gpt-4.1-mini", GROQ_LARGE, LARGE, GEMINI],
   },
   "demo-outage": {
     description: "The first upstream is always down, to show fallback and the circuit breaker.",
@@ -113,7 +119,7 @@ export interface ProviderInfo {
   needs: string | null;
   /** Billed per token, with no free tier. */
   paid: boolean;
-  /** Whether the public demo key may use it: only providers whose quota is this demo's alone to spend. */
+  /** Whether the public demo key may use it: only free tiers whose quota belongs to this deployment alone. */
   demo: boolean;
   baseUrl?: string;
 }
@@ -121,7 +127,7 @@ export interface ProviderInfo {
 export const PROVIDERS: ProviderInfo[] = [
   { id: "workers-ai", needs: null, paid: false, demo: true },
   { id: "groq", needs: "GROQ_API_KEY", paid: false, demo: true, baseUrl: "https://api.groq.com/openai/v1" },
-  { id: "gemini", needs: "GEMINI_API_KEY", paid: false, demo: false, baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai" },
+  { id: "gemini", needs: "GEMINI_API_KEY", paid: false, demo: true, baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai" },
   { id: "openrouter", needs: "OPENROUTER_API_KEY", paid: false, demo: false, baseUrl: "https://openrouter.ai/api/v1" },
   { id: "openai", needs: "OPENAI_API_KEY", paid: true, demo: false, baseUrl: "https://api.openai.com/v1" },
   { id: "xai", needs: "XAI_API_KEY", paid: true, demo: false, baseUrl: "https://api.x.ai/v1" },

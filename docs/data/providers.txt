@@ -3,22 +3,23 @@ providers with credentials: workers-ai, groq, gemini, openai
 
 1. Each model, 8 requests one after another, same prompt, 80 tokens at most
    model                                              answered   first token (median)   whole answer (median)   tokens out (median)   streams
-   workers-ai/llama-3.2-3b-instruct                   8 / 8      395 ms                 653 ms                  51                    yes
-   workers-ai/llama-3.1-8b-instruct-fp8               8 / 8      489 ms                 3067 ms                 54                    yes
-   workers-ai/llama-3.3-70b-instruct-fp8-fast         8 / 8      448 ms                 1321 ms                 44                    yes
-   groq/openai/gpt-oss-20b                            8 / 8      463 ms                 513 ms                  52                    yes
-   groq/openai/gpt-oss-120b                           8 / 8      493 ms                 584 ms                  60                    yes
-   gemini/gemini-3.5-flash-lite                       8 / 8      1156 ms                1353 ms                 39                    yes
+   workers-ai/llama-3.2-3b-instruct                   8 / 8      373 ms                 694 ms                  49                    yes
+   workers-ai/llama-3.1-8b-instruct-fp8               8 / 8      467 ms                 2913 ms                 48                    yes
+   workers-ai/llama-3.3-70b-instruct-fp8-fast         8 / 8      613 ms                 1513 ms                 46                    yes
+   groq/openai/gpt-oss-20b                            8 / 8      960 ms                 1001 ms                 55                    yes
+   groq/openai/gpt-oss-120b                           8 / 8      670 ms                 758 ms                  53                    yes
+   gemini/gemini-3.5-flash-lite                       5 / 8      4287 ms                4435 ms                 39                    yes   first failure: gemini/gemini-3.5-flash-lite timeout
    openai/gpt-4.1-mini                                0 / 8      –                      –                       –                     no   first failure: openai/gpt-4.1-mini rate_limited (429)
 
 2. Each route once: the upstreams it tried, in order
    fast     200  groq/openai/gpt-oss-20b ok
-   smart    200  gemini/gemini-3.5-flash-lite ok
-   premium  200  openai/gpt-4.1-mini rate_limited (429) → gemini/gemini-3.5-flash-lite ok
+   smart    200  groq/openai/gpt-oss-120b ok
+   gemini   200  gemini/gemini-3.5-flash-lite timeout → groq/openai/gpt-oss-120b ok
+   premium  200  openai/gpt-4.1-mini rate_limited (429) → groq/openai/gpt-oss-120b ok
 
-3. 24 requests at once on the "smart" route (its first upstream is a free tier with its own rate limit)
+3. 24 requests at once on the "gemini" route (its first upstream is a free tier with its own rate limit)
    answered 24 / 24
-     16 by groq/openai/gpt-oss-120b
-      8 by gemini/gemini-3.5-flash-lite
-     16 × gemini/gemini-3.5-flash-lite rate_limited
-   median time to a whole answer: 1068 ms
+     12 by groq/openai/gpt-oss-120b
+     12 by gemini/gemini-3.5-flash-lite
+     12 × gemini/gemini-3.5-flash-lite rate_limited
+   median time to a whole answer: 2841 ms

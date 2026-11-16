@@ -135,10 +135,10 @@ describe("the catalog", () => {
 
   it("leaves out providers the demo key may not spend", () => {
     const all = new Map<string, Provider>([["mock", mock()], ["groq", mock()], ["gemini", mock()], ["openai", mock()], ["workers-ai", mock()]]);
-    expect(resolve("premium", all)?.targets.map((t) => t.provider)).toEqual(["openai", "gemini", "groq", "workers-ai"]);
-    expect(resolve("premium", all, true)?.targets.map((t) => t.provider)).toEqual(["groq", "workers-ai"]);
+    expect(resolve("premium", all)?.targets.map((t) => t.provider)).toEqual(["openai", "groq", "workers-ai", "gemini"]);
+    expect(resolve("premium", all, true)?.targets.map((t) => t.provider)).toEqual(["groq", "workers-ai", "gemini"]);
     expect(resolve("openai/gpt-4.1-mini", all, true)?.targets).toEqual([]);
-    expect(resolve("fast", all, true)?.targets.map((t) => t.provider)).toEqual(["groq", "workers-ai", "workers-ai"]);
+    expect(resolve("gemini", all, true)?.targets.map((t) => t.provider)).toEqual(["gemini", "groq", "workers-ai"]);
   });
 
   it("does not know models outside the catalog", () => {

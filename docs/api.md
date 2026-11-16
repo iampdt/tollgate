@@ -83,7 +83,7 @@ OpenAI's error shape: `{"error": {"message", "type", "code"}}`.
 | 400 | `invalid_request` | The body failed validation; the message names the field |
 | 400 | `upstream_rejected_request` | An upstream called the request invalid; not retried elsewhere |
 | 401 | `invalid_api_key` | Missing or unknown key |
-| 403 | `not_available_on_demo_key` | The model or route uses only providers the public demo key may not spend |
+| 403 | `not_available_on_demo_key` | The model or route uses only a paid provider, which the public demo key may not spend |
 | 404 | `model_not_found` | Not a route and not in the catalog |
 | 413 | `request_too_large` | Body over 256 KB |
 | 429 | `rate_limited` | Over requests per minute; see `Retry-After` |

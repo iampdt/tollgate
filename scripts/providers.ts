@@ -107,14 +107,14 @@ try {
 
   await adminCall("/api/admin/breakers/reset", "POST");
   console.log("\n2. Each route once: the upstreams it tried, in order");
-  for (const route of ["fast", "smart", "premium"]) {
+  for (const route of ["fast", "smart", "gemini", "premium"]) {
     const reply = await ask(key, route);
     console.log(`   ${route.padEnd(8)} ${reply.status}  ${path(reply.attempts)}`);
   }
 
   await adminCall("/api/admin/breakers/reset", "POST");
-  console.log(`\n3. ${BURST} requests at once on the "smart" route (its first upstream is a free tier with its own rate limit)`);
-  const burst = await Promise.all(Array.from({ length: BURST }, () => ask(key, "smart")));
+  console.log(`\n3. ${BURST} requests at once on the "gemini" route (its first upstream is a free tier with its own rate limit)`);
+  const burst = await Promise.all(Array.from({ length: BURST }, () => ask(key, "gemini")));
   const answered = burst.filter((r) => r.status === 200);
   const by = new Map<string, number>();
   for (const reply of answered) by.set(reply.target ?? "?", (by.get(reply.target ?? "?") ?? 0) + 1);

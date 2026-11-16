@@ -6,8 +6,9 @@ import { Attempts, ErrorNote, Fact, Status } from "../ui";
 const ROUTES = [
   { id: "fast", label: "fast — Groq first, then Cloudflare's small models" },
   { id: "demo-outage", label: "demo-outage — first upstream is always down" },
-  { id: "smart", label: "smart — larger models (Gemini joins with your own key)" },
-  { id: "premium", label: "premium — OpenAI first with your own key" },
+  { id: "smart", label: "smart — larger models: Groq, Cloudflare, Gemini" },
+  { id: "gemini", label: "gemini — Gemini first, Groq and Cloudflare behind it" },
+  { id: "premium", label: "premium — OpenAI first (skipped on the demo key)" },
   { id: "mock/echo", label: "mock/echo — repeats your prompt, costs nothing" },
 ];
 

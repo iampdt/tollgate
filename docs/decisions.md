@@ -110,34 +110,41 @@ containing a marker string and asserts the marker is nowhere in the stored row.
 
 ## 11. Route order from measurement, and a first-token timeout to match
 
-With keys for Groq and Gemini set, I sent the same prompt through every model eight times.
-Groq returned a whole answer in about 0.5 s, Workers AI's small and large models in 0.7 and
-1.3 s, Gemini in 1.4 s, and Workers AI's 8B model in 3.1 s. The routes are ordered by that.
+With keys for Groq and Gemini set, I sent the same prompt through every model eight times,
+in three runs over an afternoon. Groq and Workers AI's small model returned a whole answer
+in 0.5 to 1 s, Workers AI's large model in about 1.4 s, Gemini in 1.4 to 4.4 s, and Workers
+AI's 8B model in about 3 s. The routes are ordered by that. Gemini led the `smart` route
+until the second run; a separate `gemini` route keeps it first, for anyone who wants that
+model and for testing what happens when a first provider rate-limits.
 
 The first-token timeout started at 12 s, a guess. In the first provider run Gemini accepted
-a request and sent nothing, and the caller waited all 12 s before Groq answered. The slowest
-median first token I measured was 1.2 s, so the timeout is now 6 s.
+a request and sent nothing, and the caller waited all 12 s before Groq answered. Typical first tokens
+came in about half a second, so the timeout is now 6 s. Gemini's worst run had a median first
+token of 4.3 s, which is why it is not lower.
 
 **Cost.** A model that thinks for a long time before its first token would be cut off. The
 catalog asks reasoning models for low effort for the same reason.
 
 ## 12. The demo key spends only what is the demo's to spend
 
-Every provider has a flag for whether the public key may use it. Workers AI and Groq are
-open to it: their free quotas belong to this deployment alone. Gemini is not, because its
-free quota may be shared with other projects on the same account, and OpenAI is not, because
-it is billed. For the demo key those upstreams are left out of every route, and asking for
-one by name returns 403.
+Every provider has a flag for whether the public key may use it. Workers AI, Groq and Gemini
+are open to it: each is a free tier on a key made for this deployment, so a visitor can only
+ever use up this demo's own quota. OpenAI is not, because it is billed. For the demo key a
+closed upstream is left out of every route, and asking for one by name returns 403.
 
-**Cost.** On the demo key the `smart` and `premium` routes start at Groq, so a visitor never
-sees Gemini or OpenAI in an attempt list. The alternative was a stranger's burst deciding whether my other projects could reach Gemini.
+Gemini was closed at first. Its key then came from a Google Cloud project shared with my
+other projects, and a stranger's burst could have decided whether they reached a model. It
+opened once the gateway had a key of its own.
+
+**Cost.** A visitor never sees the paid provider in an attempt list, so on the demo key the
+`premium` route starts at Groq.
 
 ## 13. An empty answer is a failed attempt
 
 The first time the demo key reached Groq, the reply was an empty string with status 200. The
 model thinks before answering, the thinking counts against `max_tokens`, and a limit of 40
 was spent before it wrote a word. Two changes. A model marked as thinking gets an allowance
-on top of the caller's limit. And an upstream that finishes without any text is treated like
+on top of the caller's limit (Groq's), or is told to think as little as it can (Gemini's). And an upstream that finishes without any text is treated like
 one that failed: the next upstream is asked.
 
 **Cost.** A caller can be billed for slightly more output tokens than the limit they set, on

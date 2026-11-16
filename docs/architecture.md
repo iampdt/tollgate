@@ -97,8 +97,9 @@ Routes on this deployment, ordered by measured latency:
 | Route | Upstreams, in order |
 | --- | --- |
 | `fast` | Groq `gpt-oss-20b` → Workers AI `llama-3.2-3b` → Workers AI `llama-3.1-8b` |
-| `smart` | Gemini `gemini-3.5-flash-lite` → Groq `gpt-oss-120b` → Workers AI `llama-3.3-70b` → Workers AI `llama-3.1-8b` |
-| `premium` | OpenAI `gpt-4.1-mini` → Gemini → Groq `gpt-oss-120b` → Workers AI `llama-3.3-70b` |
+| `smart` | Groq `gpt-oss-120b` → Workers AI `llama-3.3-70b` → Gemini `gemini-3.5-flash-lite` → Workers AI `llama-3.1-8b` |
+| `gemini` | Gemini `gemini-3.5-flash-lite` → Groq `gpt-oss-120b` → Workers AI `llama-3.3-70b` |
+| `premium` | OpenAI `gpt-4.1-mini` → Groq `gpt-oss-120b` → Workers AI `llama-3.3-70b` → Gemini |
 | `demo-outage` | a mock that always fails → Groq `gpt-oss-20b` → Workers AI `llama-3.2-3b` → a canned reply |
 
 ## Rate limit and budget
@@ -113,8 +114,9 @@ lock and no compare-and-set, and a burst cannot oversubscribe the bucket.
 
 The public demo key uses two gates per request, one per visitor (by a hash of the address)
 and one shared by all visitors, so one person cannot use up everyone's allowance and
-everyone together cannot use up the free model quota. It may also only spend Workers AI and
-Groq; upstreams at other providers are left out of its routes.
+everyone together cannot use up the free model quota. It may also only spend the free
+tiers that belong to this deployment (Workers AI, Groq, Gemini); the paid provider is left
+out of its routes.
 
 ## Circuit breaker
 

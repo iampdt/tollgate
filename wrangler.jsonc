@@ -32,7 +32,8 @@
   // Daily: delete old traces and expired cache entries.
   "triggers": { "crons": ["17 3 * * *"] },
   "vars": {
-    // Measured: the slowest provider's median first token is about 1.2 s (docs/results.md).
+    // Measured: first tokens usually arrive in about half a second; the slowest provider's
+    // worst run had a median of 4.3 s (docs/results.md).
     "FIRST_TOKEN_TIMEOUT_MS": "6000",
     "TOTAL_TIMEOUT_MS": "60000"
   },

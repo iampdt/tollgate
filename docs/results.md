@@ -183,48 +183,76 @@ A repeat of the same wording is not affected: the exact cache is written at once
 
 `npx tsx scripts/providers.ts` sends real requests through every model the deployment has
 credentials for, with caching off. Keys were set for Groq, Gemini and OpenAI; Workers AI
-needs none.
+needs none. I ran it three times over one afternoon. The last run:
 
 ```
 1. Each model, 8 requests one after another, same prompt, 80 tokens at most
    model                                              answered   first token (median)   whole answer (median)   tokens out (median)   streams
-   workers-ai/llama-3.2-3b-instruct                   8 / 8      395 ms                 653 ms                  51                    yes
-   workers-ai/llama-3.1-8b-instruct-fp8               8 / 8      489 ms                 3067 ms                 54                    yes
-   workers-ai/llama-3.3-70b-instruct-fp8-fast         8 / 8      448 ms                 1321 ms                 44                    yes
-   groq/openai/gpt-oss-20b                            8 / 8      463 ms                 513 ms                  52                    yes
-   groq/openai/gpt-oss-120b                           8 / 8      493 ms                 584 ms                  60                    yes
-   gemini/gemini-3.5-flash-lite                       8 / 8      1156 ms                1353 ms                 39                    yes
+   workers-ai/llama-3.2-3b-instruct                   8 / 8      373 ms                 694 ms                  49                    yes
+   workers-ai/llama-3.1-8b-instruct-fp8               8 / 8      467 ms                 2913 ms                 48                    yes
+   workers-ai/llama-3.3-70b-instruct-fp8-fast         8 / 8      613 ms                 1513 ms                 46                    yes
+   groq/openai/gpt-oss-20b                            8 / 8      960 ms                 1001 ms                 55                    yes
+   groq/openai/gpt-oss-120b                           8 / 8      670 ms                 758 ms                  53                    yes
+   gemini/gemini-3.5-flash-lite                       5 / 8      4287 ms                4435 ms                 39                    yes   first failure: gemini/gemini-3.5-flash-lite timeout
    openai/gpt-4.1-mini                                0 / 8      –                      –                       –                     no   first failure: openai/gpt-4.1-mini rate_limited (429)
 
 2. Each route once: the upstreams it tried, in order
    fast     200  groq/openai/gpt-oss-20b ok
-   smart    200  gemini/gemini-3.5-flash-lite ok
-   premium  200  openai/gpt-4.1-mini rate_limited (429) → gemini/gemini-3.5-flash-lite ok
+   smart    200  groq/openai/gpt-oss-120b ok
+   gemini   200  gemini/gemini-3.5-flash-lite timeout → groq/openai/gpt-oss-120b ok
+   premium  200  openai/gpt-4.1-mini rate_limited (429) → groq/openai/gpt-oss-120b ok
 
-3. 24 requests at once on the "smart" route (its first upstream is a free tier with its own rate limit)
+3. 24 requests at once on the "gemini" route (its first upstream is a free tier with its own rate limit)
    answered 24 / 24
-     16 by groq/openai/gpt-oss-120b
-      8 by gemini/gemini-3.5-flash-lite
-     16 × gemini/gemini-3.5-flash-lite rate_limited
-   median time to a whole answer: 1068 ms
+     12 by groq/openai/gpt-oss-120b
+     12 by gemini/gemini-3.5-flash-lite
+     12 × gemini/gemini-3.5-flash-lite rate_limited
+   median time to a whole answer: 2841 ms
 ```
 
-**Per model.** Groq is the fastest end to end by a wide margin, which is why it leads the
-`fast` route. Gemini's first token takes about 1.2 s. The 8-billion-parameter model on
-Workers AI starts as quickly as the others and then generates slowly, so it sits last.
+Median time to a whole answer, per run:
+
+| Model | Run 1 | Run 2 | Run 3 |
+| --- | --- | --- | --- |
+| Groq `gpt-oss-20b` | 513 ms | 682 ms | 1001 ms |
+| Groq `gpt-oss-120b` | 584 ms | 507 ms | 758 ms |
+| Workers AI `llama-3.2-3b-instruct` | 653 ms | 592 ms | 694 ms |
+| Workers AI `llama-3.3-70b-instruct-fp8-fast` | 1321 ms | 1400 ms | 1513 ms |
+| Gemini `gemini-3.5-flash-lite` | 1353 ms | 2901 ms | 4435 ms |
+| Workers AI `llama-3.1-8b-instruct-fp8` | 3067 ms | 2780 ms | 2913 ms |
+
+Between run 1 and run 2 Gemini's reasoning setting changed from "low" to "minimal" (see
+below), so its three columns are not like for like; the other models were unchanged.
+
+**Per model.** Groq and Workers AI's small model are the quickest, so they lead the `fast`
+route, and Groq's larger model leads `smart`. Gemini's free tier was the slowest and the
+least steady: in the last run 3 of its 8 requests produced no first token within 6 s.
+The 8-billion-parameter model on Workers AI starts as quickly as the others and then
+generates slowly, so it sits last.
 
 **OpenAI answered nothing.** The account behind the key has no credit, and OpenAI refuses
 each call with 429. The adapter, the request and the error handling are exercised; a
 successful OpenAI completion is not. On the `premium` route that refusal is the first
-attempt of every request, and Gemini answers.
+attempt of every request, and Groq answers.
 
-**The burst.** Twenty-four requests at once to `smart`, whose first upstream is Gemini's
-free tier. Gemini took 8 and refused 16 with "too many requests". Each refused request moved
-to Groq and was answered there. Callers saw 24 answers and no errors.
+**The burst.** Twenty-four requests at once to a route whose first upstream is Gemini's free
+tier. Across the three runs Gemini answered 8, 10 and 12 and refused the rest with "too many
+requests" (plus one timeout). Each refused request moved to Groq and was answered there.
+Callers saw 24 answers and no errors in every run; the median time to an answer was 1.1,
+2.0 and 2.8 s.
 
-**A timeout that changed a default.** In the first run of this script, Gemini accepted one
-request and sent nothing. The caller waited the full first-token timeout, then 12 s, before
-Groq answered. With the slowest provider's median first token at 1.2 s, 12 s was far too
-patient. The timeout is now 6 s.
+**Four things mocks had not shown.**
+
+- *Retired models.* Two model names in the catalog no longer existed. A 404 from an upstream
+  now moves to the next one rather than failing the request.
+- *A silent upstream.* In run 1 Gemini accepted a request and sent nothing; the caller
+  waited the full first-token timeout, then 12 s. It is now 6 s.
+- *An empty answer with status 200.* Groq's models think before answering, and the thinking
+  counts against `max_tokens`. With a limit of 40 the reply was an empty string. Those
+  models now get an allowance on top of the caller's limit, and any upstream that finishes
+  without text is treated as failed.
+- *The same from Gemini, differently.* With reasoning set to "low" and a limit of 200 it
+  returned six tokens of answer. "none" is rejected for this model. "minimal" answers within
+  the limit.
 
 xAI and OpenRouter have no key on this deployment and were not exercised.

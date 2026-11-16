@@ -16,7 +16,7 @@ export function Quickstart() {
         <h2 className="text-lg font-semibold">Call it like the OpenAI API</h2>
         <p className="text-sm text-pretty text-muted">
           The gateway speaks the chat completions protocol, so existing clients work by changing the base URL. The key below is public: each visitor gets 20 requests a minute and 20,000 tokens a
-          day on it, on the routes that use Groq and Cloudflare's models.
+          day on it, across Groq, Gemini and Cloudflare's models. It cannot spend the paid provider.
         </p>
         <Code>{`curl ${origin}/v1/chat/completions \\
   -H "Authorization: Bearer ${DEMO_KEY}" \\

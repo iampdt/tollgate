@@ -31,7 +31,7 @@ export function RoutesPage() {
     <div className="space-y-6">
       <p className="max-w-2xl text-sm text-pretty text-muted">
         A route is a name callers use as the <code className="font-mono text-xs">model</code>, and an ordered list of upstreams behind it. The gateway tries them top to bottom. An upstream that fails
-        five times in a row is skipped for 30 seconds, then tested with a single request. The public demo key can only spend providers whose free quota is the demo's alone; other upstreams are left out for it.
+        five times in a row is skipped for 30 seconds, then tested with a single request. The public demo key spends only free tiers that belong to this deployment; paid upstreams are left out for it.
       </p>
       <ErrorNote error={error} />
       {health && (
