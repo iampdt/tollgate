@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BASE_OPEN_MS, check, type Circuits, FAILURES_TO_OPEN, MAX_OPEN_MS, PROBE_LEASE_MS, report, stateOf } from "../src/worker/breaker";
 import { cosine, wordHashEmbedder } from "../src/worker/cache";
-import { costMicros, resolve, ROUTES } from "../src/worker/catalog";
+import { costMicros, forTarget, parseTarget, resolve, ROUTES } from "../src/worker/catalog";
 import { admit, freshState, type Limits } from "../src/worker/gate";
 import { type Part, type Provider, ProviderError, sseData } from "../src/worker/providers/base";
 import { mock } from "../src/worker/providers/mock";
@@ -148,6 +148,13 @@ describe("the catalog", () => {
 
   it("every route points at catalogued models", () => {
     for (const route of Object.values(ROUTES)) for (const target of route.targets) expect(resolve(target, new Map())).not.toBeNull();
+  });
+
+  it("gives a thinking model room beyond the caller's limit, and only when there is a limit", () => {
+    const groq = parseTarget("groq/openai/gpt-oss-20b");
+    expect(forTarget(groq, { max_tokens: 40 })).toMatchObject({ model: "openai/gpt-oss-20b", max_tokens: 200, extra: { reasoning_effort: "low" } });
+    expect(forTarget(groq, {})).not.toHaveProperty("max_tokens");
+    expect(forTarget(parseTarget("mock/echo"), { max_tokens: 40 })).toMatchObject({ model: "echo", max_tokens: 40 });
   });
 
   it("prices tokens in millionths of a dollar", () => {

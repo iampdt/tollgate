@@ -1,7 +1,7 @@
 // Tries a route's upstreams in order until one starts answering.
 
 import type { Attempt, BreakerState, FailureKind } from "../shared/api";
-import { extraFor, type Target } from "./catalog";
+import { forTarget, type Target } from "./catalog";
 import { type ChatParams, type Part, type Provider, ProviderError } from "./providers/base";
 
 export interface RouterDeps {
@@ -68,7 +68,7 @@ export async function open(
     const cancel = () => controller.abort();
     deps.signal.addEventListener("abort", cancel, { once: true });
     const startedAt = deps.now();
-    const stream = provider.stream({ ...params, model: target.model, extra: extraFor(target.id) }, controller.signal);
+    const stream = provider.stream(forTarget(target, params), controller.signal);
 
     let timer: ReturnType<typeof setTimeout> | null = null;
     try {
@@ -83,12 +83,18 @@ export async function open(
       });
       const result = await Promise.race([next, timeout]);
       clearTimeout(timer);
+      // An upstream that finishes without a word has not answered. Seen for real: a model
+      // that spent its whole token limit thinking. Better the next upstream than an empty reply.
+      if (result.done || (result.value.finish && !result.value.delta)) {
+        cancel();
+        throw new ProviderError("server", "the upstream returned an empty answer");
+      }
       attempts.push({ target: target.id, outcome: "ok", ms: deps.now() - startedAt });
       return {
         index,
         target,
-        first: result.done ? { finish: "stop" } : result.value,
-        rest: result.done ? (async function* () {})() : stream,
+        first: result.value,
+        rest: stream,
         startedAt,
         firstTokenAt: deps.now(),
         cancel: () => {

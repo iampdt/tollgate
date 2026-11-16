@@ -146,18 +146,18 @@ You need Node 22 and a free Cloudflare account.
 npm install
 cp .dev.vars.example .dev.vars      # set ADMIN_TOKEN
 npm run dev                         # http://localhost:5173, with the mock upstream
-npm run check                       # types, 92 tests, build
+npm run check                       # types, 94 tests, build
 ```
 
 Deploying your own, and adding provider keys: [docs/development.md](docs/development.md).
 
 ## Tests
 
-92 tests, run inside the Workers runtime with real Durable Objects, D1 and KV.
+94 tests, run inside the Workers runtime with real Durable Objects, D1 and KV.
 
 | | |
 | --- | --- |
-| Whole requests | Fallback on failure, rate limiting, timeout and a broken stream; 502, 503 and 504; streaming; the demo key |
+| Whole requests | Fallback on failure, rate limiting, timeout, an empty answer and a broken stream; 502, 503 and 504; streaming; the demo key |
 | Caches | Hits and misses per key, route, history and settings; the judge accepting, refusing, timing out and failing |
 | Limits | Exactly the limit under a simultaneous burst; the daily budget; cache hits not charged; revoked keys |
 | Policy, without a clock | The token bucket and the circuit breaker as pure functions of state and time |
@@ -170,7 +170,7 @@ Deploying your own, and adding provider keys: [docs/development.md](docs/develop
   no successful OpenAI completion to show. xAI and OpenRouter have no key set and were not
   exercised. All but Workers AI share one OpenAI-compatible adapter.
 - **The public demo key spends only Groq and Workers AI.** Gemini and OpenAI are left out of
-  its routes, so the `smart` and `premium` routes need a key of your own.
+  its routes, so on that key `smart` and `premium` start at Groq.
 - **The semantic cache evaluation is small.** Eighty pairs that I wrote, in English, one
   sentence each. It shows the failure and the fix; it is not a benchmark.
 - **The exact cache is per Cloudflare location.** A repeat has to arrive at the same

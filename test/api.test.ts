@@ -106,6 +106,17 @@ describe("fallback", () => {
     expect(body.tollgate.attempts.map((a) => a.outcome)).toEqual(["server", "ok"]);
   });
 
+  it("treats an empty answer as a failure and asks the next upstream", async () => {
+    const body = await completion(await chat("mock-empty", "say something"));
+    expect(body.choices[0]?.message.content).toBe("say something");
+    expect(body.tollgate.attempts.map((a) => [a.target, a.outcome])).toEqual([
+      ["mock/empty", "server"],
+      ["mock/echo", "ok"],
+    ]);
+    const alone = await chat("mock/empty", "say something", { stream: true });
+    expect(alone.status).toBe(502);
+  });
+
   it("returns 502 with every attempt when all upstreams fail", async () => {
     const response = await chat("mock-down", "hi");
     expect(response.status).toBe(502);

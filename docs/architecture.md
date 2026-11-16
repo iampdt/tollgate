@@ -80,6 +80,7 @@ Failures are a `ProviderError` with a kind: `timeout`, `rate_limited`, `server`,
 | Kind | Next upstream? | Counts against the upstream's circuit? |
 | --- | --- | --- |
 | `timeout`, `rate_limited`, `server`, `network`, `auth` | yes | yes |
+| an answer with no text (reported as `server`) | yes | yes |
 | `bad_request` | no: the caller gets 400 | no |
 | `aborted` (caller left) | no | no |
 

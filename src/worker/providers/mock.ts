@@ -9,7 +9,7 @@ import { type ChatParams, estimateTokens, type Part, type Provider, ProviderErro
 //   fail-503      refuses with a server error       fail-429   refuses with "too many requests"
 //   fail-400      refuses the request as invalid    fail-401   refuses the credentials
 //   timeout       never answers                     slow       answers after 400 ms
-//   midstream     sends three pieces, then breaks
+//   midstream     sends three pieces, then breaks   empty      finishes without saying anything
 
 const sleep = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
@@ -38,6 +38,9 @@ export function mock(): Provider {
       switch (params.model) {
         case "echo":
           return yield* say(lastUser || "(nothing to echo)", 0);
+        case "empty":
+          yield { finish: "length", usage: { promptTokens, completionTokens: 40 } };
+          return;
         case "canned":
           return yield* say(CANNED, 0);
         case "slow":

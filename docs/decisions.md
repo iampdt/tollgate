@@ -129,5 +129,17 @@ free quota may be shared with other projects on the same account, and OpenAI is 
 it is billed. For the demo key those upstreams are left out of every route, and asking for
 one by name returns 403.
 
-**Cost.** A visitor cannot try the `smart` or `premium` routes without a key of their own.
-The alternative was a stranger's burst deciding whether my other projects could reach Gemini.
+**Cost.** On the demo key the `smart` and `premium` routes start at Groq, so a visitor never
+sees Gemini or OpenAI in an attempt list. The alternative was a stranger's burst deciding whether my other projects could reach Gemini.
+
+## 13. An empty answer is a failed attempt
+
+The first time the demo key reached Groq, the reply was an empty string with status 200. The
+model thinks before answering, the thinking counts against `max_tokens`, and a limit of 40
+was spent before it wrote a word. Two changes. A model marked as thinking gets an allowance
+on top of the caller's limit. And an upstream that finishes without any text is treated like
+one that failed: the next upstream is asked.
+
+**Cost.** A caller can be billed for slightly more output tokens than the limit they set, on
+those models. A request whose correct answer really is empty would be retried elsewhere; I
+have not found one.

@@ -25,6 +25,11 @@ interface Model {
   price: { input: number; output: number } | null;
   /** Extra request fields this model needs, sent as they are. */
   extra?: Record<string, unknown>;
+  /**
+   * Tokens added to the caller's limit for a model that thinks before it answers. Its
+   * thinking counts against the limit, so without this a small limit buys no answer at all.
+   */
+  thinkingAllowance?: number;
 }
 
 const FREE = { input: 0, output: 0 };
@@ -40,12 +45,13 @@ export const MODELS: Record<TargetId, Model> = {
   "workers-ai/@cf/meta/llama-3.2-3b-instruct": { price: { input: 0.051, output: 0.335 } },
   "workers-ai/@cf/meta/llama-3.1-8b-instruct-fp8": { price: { input: 0.152, output: 0.287 } },
   "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast": { price: { input: 0.293, output: 2.253 } },
-  "groq/openai/gpt-oss-20b": { price: { input: 0.075, output: 0.3 }, extra: LOW_EFFORT },
-  "groq/openai/gpt-oss-120b": { price: { input: 0.15, output: 0.6 }, extra: LOW_EFFORT },
+  "groq/openai/gpt-oss-20b": { price: { input: 0.075, output: 0.3 }, extra: LOW_EFFORT, thinkingAllowance: 160 },
+  "groq/openai/gpt-oss-120b": { price: { input: 0.15, output: 0.6 }, extra: LOW_EFFORT, thinkingAllowance: 160 },
   "gemini/gemini-3.5-flash-lite": { price: { input: 0.3, output: 2.5 }, extra: LOW_EFFORT },
   "openai/gpt-4.1-mini": { price: { input: 0.4, output: 1.6 } },
   "openrouter/meta-llama/llama-3.3-70b-instruct:free": { price: FREE },
   "mock/echo": { price: FREE },
+  "mock/empty": { price: FREE },
   "mock/canned": { price: FREE },
   "mock/slow": { price: FREE },
   "mock/timeout": { price: FREE },
@@ -98,6 +104,7 @@ export const ROUTES: Record<string, Route> = {
   "mock-timeout": { description: "A mock that never answers, then an echo.", targets: ["mock/timeout", "mock/echo"] },
   "mock-busy": { description: "A rate-limited mock, then an echo.", targets: ["mock/fail-429", "mock/echo"] },
   "mock-broken": { description: "A mock that breaks mid-answer, then an echo.", targets: ["mock/midstream", "mock/echo"] },
+  "mock-empty": { description: "A mock that answers with nothing, then an echo.", targets: ["mock/empty", "mock/echo"] },
   "mock-down": { description: "Every upstream fails.", targets: ["mock/fail-503", "mock/fail-401"] },
 };
 
@@ -169,7 +176,14 @@ export function resolve(model: string, providers: Map<string, Provider>, demoOnl
   return { name: model, targets: ids.map(parseTarget).filter(usable) };
 }
 
-/** The extra request fields a target's model needs. */
-export function extraFor(target: TargetId): Record<string, unknown> | undefined {
-  return MODELS[target]?.extra;
+/** The request as this target's model needs it: its extra fields, and room to think. */
+export function forTarget<P extends { max_tokens?: number }>(target: Target, params: P): P & { model: string; extra?: Record<string, unknown> } {
+  const model = MODELS[target.id];
+  const allowance = model?.thinkingAllowance ?? 0;
+  return {
+    ...params,
+    model: target.model,
+    extra: model?.extra,
+    ...(params.max_tokens !== undefined && allowance > 0 && { max_tokens: params.max_tokens + allowance }),
+  };
 }
