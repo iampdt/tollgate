@@ -15,7 +15,8 @@ shows what the gateway did with each one.
 
 - **One API for several providers.** Callers use the OpenAI chat completions format and a
   route name such as `fast`. The gateway picks the upstream. Cloudflare Workers AI works
-  with no key; Groq, Gemini and OpenRouter join the routes when their keys are set.
+  with no key; Groq, Gemini, OpenAI, xAI and OpenRouter join the routes when their keys are
+  set. This deployment routes across Groq, Gemini and Workers AI.
 - **Fallback.** A route is an ordered list of upstreams. One that fails, rate-limits or
   sends no first token in time is skipped for that request and the next one answers.
 - **Circuit breaker.** After five failures in a row an upstream is not called at all for
@@ -48,7 +49,7 @@ flowchart LR
   W -- "seen this before?" --> X[(Exact cache<br/>per location)]
   W -- "which upstreams are healthy?" --> B[Circuit breaker<br/>one Durable Object]
   W -- "means the same as…?" --> V[(Vectorize + KV)] --> J[Judge model]
-  W -- "try in order" --> U1[Workers AI] & U2[Groq / Gemini / OpenRouter]
+  W -- "try in order" --> U1[Groq] & U2[Gemini] & U3[Workers AI]
   W -. "after the response" .-> D[(D1: traces)]
 ```
 
@@ -69,6 +70,12 @@ Details: [architecture](docs/architecture.md) · [decisions](docs/decisions.md) 
 
 ## The parts worth a closer look
 
+**A burst that outran a provider's limit, and nobody noticed.** The `smart` route tries
+Gemini's free tier first. I sent it 24 requests at once. Gemini answered 8 and refused 16
+with "too many requests"; Groq answered those 16. All 24 callers got an answer, in a median
+of 1.1 s. On the `premium` route the first upstream is OpenAI, whose account here has no
+credit, so every call is refused and Gemini answers instead.
+
 **A semantic cache that measured its own wrong answers.** The usual design embeds the prompt
 and serves the nearest stored answer above a similarity threshold. I wrote 80 labelled pairs,
 40 rewordings and 40 questions that look alike but need different answers, and ran them
@@ -76,7 +83,7 @@ through the deployed gateway. At a threshold of 0.85 the embedding alone hit 36 
 rewordings and also served 22 of the 40 different questions a wrong answer. "Convert 100
 dollars to euros" and "convert 100 euros to dollars" score 0.992. No threshold fixed it, and
 neither did four other embedding models. So a match is now confirmed by a second model before
-it is served: 31 of 40 rewordings still hit, and 0 of 40 different questions do.
+it is served: 34 of 40 rewordings still hit, and 0 of 40 different questions do.
 
 **Where the gateway's own time went.** The first version took 85 to 235 ms before calling a
 model, and about 590 ms with the semantic cache on. I added a diagnostic that times each
@@ -107,15 +114,29 @@ All on the deployed gateway on 16 November 2026, called from India. Method and f
 
 | | |
 | --- | --- |
-| Gateway's own latency, 400 requests at 20 at a time | 59 ms median, 137 ms 95th percentile |
-| Exact cache hit, end to end as the client saw it | 82 ms median, 122 ms 95th percentile |
+| Gateway's own latency, 400 requests at 20 at a time | 60 ms median, 137 ms 95th percentile |
+| Exact cache hit, end to end as the client saw it | 81 ms median, 121 ms 95th percentile |
 | Rate limit: 200 requests at once on a 50-per-minute key | 50 answered, 150 refused |
+| 24 requests at once on a route whose first provider rate-limits | 24 answered: 8 by Gemini, 16 by Groq after Gemini refused |
 | Semantic cache, threshold alone (0.85) | 36 / 40 rewordings hit, 22 / 40 wrong answers |
-| Semantic cache, with the judge (0.85) | 31 / 40 rewordings hit, 0 / 40 wrong answers |
+| Semantic cache, with the judge (0.85) | 34 / 40 rewordings hit, 0 / 40 wrong answers |
 | A new answer becomes findable by meaning after | 17 to 62 s over six runs |
 
+The same one-sentence prompt through each model, eight times each:
+
+| Model | First token | Whole answer |
+| --- | --- | --- |
+| Groq `gpt-oss-20b` | 463 ms | 513 ms |
+| Groq `gpt-oss-120b` | 493 ms | 584 ms |
+| Workers AI `llama-3.2-3b-instruct` | 395 ms | 653 ms |
+| Workers AI `llama-3.3-70b-instruct-fp8-fast` | 448 ms | 1.3 s |
+| Gemini `gemini-3.5-flash-lite` | 1.2 s | 1.4 s |
+| Workers AI `llama-3.1-8b-instruct-fp8` | 489 ms | 3.1 s |
+
+Medians, about 50 tokens out. These decided the order of the routes.
+
 The semantic cache saves tokens, not time, when the model behind it is small and fast: a
-semantic hit took about 2 s in the demo, which is what the small model takes to answer.
+semantic hit took about 2 s in the demo, which is longer than these models take to answer.
 
 ## Run it
 
@@ -125,14 +146,14 @@ You need Node 22 and a free Cloudflare account.
 npm install
 cp .dev.vars.example .dev.vars      # set ADMIN_TOKEN
 npm run dev                         # http://localhost:5173, with the mock upstream
-npm run check                       # types, 88 tests, build
+npm run check                       # types, 92 tests, build
 ```
 
 Deploying your own, and adding provider keys: [docs/development.md](docs/development.md).
 
 ## Tests
 
-88 tests, run inside the Workers runtime with real Durable Objects, D1 and KV.
+92 tests, run inside the Workers runtime with real Durable Objects, D1 and KV.
 
 | | |
 | --- | --- |
@@ -144,9 +165,12 @@ Deploying your own, and adding provider keys: [docs/development.md](docs/develop
 
 ## Limits
 
-- **Only Workers AI has answered real requests here.** The Groq, Gemini and OpenRouter
-  adapters share one OpenAI-compatible implementation that is tested against a fake
-  upstream; I had no keys set for them on this deployment.
+- **Three providers have answered real requests here:** Workers AI, Groq and Gemini.
+  OpenAI was reached and refused every call, because the account has no credit, so there is
+  no successful OpenAI completion to show. xAI and OpenRouter have no key set and were not
+  exercised. All but Workers AI share one OpenAI-compatible adapter.
+- **The public demo key spends only Groq and Workers AI.** Gemini and OpenAI are left out of
+  its routes, so the `smart` and `premium` routes need a key of your own.
 - **The semantic cache evaluation is small.** Eighty pairs that I wrote, in English, one
   sentence each. It shows the failure and the fix; it is not a benchmark.
 - **The exact cache is per Cloudflare location.** A repeat has to arrive at the same

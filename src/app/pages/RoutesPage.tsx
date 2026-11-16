@@ -31,7 +31,7 @@ export function RoutesPage() {
     <div className="space-y-6">
       <p className="max-w-2xl text-sm text-pretty text-muted">
         A route is a name callers use as the <code className="font-mono text-xs">model</code>, and an ordered list of upstreams behind it. The gateway tries them top to bottom. An upstream that fails
-        five times in a row is skipped for 30 seconds, then tested with a single request.
+        five times in a row is skipped for 30 seconds, then tested with a single request. The public demo key can only spend providers whose free quota is the demo's alone; other upstreams are left out for it.
       </p>
       <ErrorNote error={error} />
       {health && (
@@ -55,11 +55,15 @@ export function RoutesPage() {
           </div>
           <section className="card p-4">
             <h2 className="font-medium">Providers on this deployment</h2>
-            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            <ul className="mt-3 grid gap-x-8 gap-y-2 sm:grid-cols-2">
               {health.providers.map((provider) => (
                 <li key={provider.id} className="flex items-center justify-between gap-3 text-sm">
                   <code className="font-mono text-xs">{provider.id}</code>
-                  {provider.configured ? <Status tone="good">configured</Status> : <span className="text-xs text-faint">needs {provider.needs}</span>}
+                  {provider.configured ? (
+                    <Status tone="good">{provider.paid ? "configured · paid" : provider.demo ? "configured · open to the demo key" : "configured · own keys only"}</Status>
+                  ) : (
+                    <span className="text-xs text-faint">needs {provider.needs}</span>
+                  )}
                 </li>
               ))}
             </ul>

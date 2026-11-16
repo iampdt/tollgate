@@ -7,7 +7,15 @@ interface Chunk {
 }
 
 /** Any upstream that speaks the OpenAI chat completions protocol: Groq, OpenRouter, Gemini's compatibility endpoint. */
-export function openAiCompatible(id: string, baseUrl: string, apiKey: string, fetcher: typeof fetch = fetch): Provider {
+export interface CompatOptions {
+  /** OpenAI's newer models take the limit under a different name. */
+  maxTokensField?: "max_tokens" | "max_completion_tokens";
+  fetcher?: typeof fetch;
+}
+
+export function openAiCompatible(id: string, baseUrl: string, apiKey: string, options: CompatOptions = {}): Provider {
+  const fetcher = options.fetcher ?? fetch;
+  const maxTokensField = options.maxTokensField ?? "max_tokens";
   return {
     id,
     async *stream(params: ChatParams, signal: AbortSignal): AsyncGenerator<Part> {
@@ -17,7 +25,7 @@ export function openAiCompatible(id: string, baseUrl: string, apiKey: string, fe
           method: "POST",
           signal,
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({ ...params, stream: true, stream_options: { include_usage: true } }),
+          body: JSON.stringify(requestBody(params, maxTokensField)),
         });
       } catch (error) {
         if (signal.aborted) throw new ProviderError("aborted", "aborted");
@@ -49,5 +57,16 @@ export function openAiCompatible(id: string, baseUrl: string, apiKey: string, fe
         if (part.delta || part.finish || part.usage) yield part;
       }
     },
+  };
+}
+
+function requestBody(params: ChatParams, maxTokensField: string): Record<string, unknown> {
+  const { max_tokens, extra, ...rest } = params;
+  return {
+    ...rest,
+    ...(max_tokens !== undefined && { [maxTokensField]: max_tokens }),
+    ...extra,
+    stream: true,
+    stream_options: { include_usage: true },
   };
 }

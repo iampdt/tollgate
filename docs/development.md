@@ -51,22 +51,29 @@ npm run deploy
 Optional providers, each a secret:
 
 ```bash
-npx wrangler secret put GROQ_API_KEY
-npx wrangler secret put GEMINI_API_KEY
+npx wrangler secret put GROQ_API_KEY         # free tier
+npx wrangler secret put GEMINI_API_KEY       # free tier
+npx wrangler secret put OPENAI_API_KEY       # paid
+npx wrangler secret put XAI_API_KEY          # paid
 npx wrangler secret put OPENROUTER_API_KEY
 ```
 
 A provider with no key is left out of every route; `GET /api/health` shows which are
-configured.
+configured. A Groq or xAI key stored as `GROK_API_KEY` is also accepted: the two names are
+one letter apart, and the key's prefix (`gsk_` or `xai-`) says which it is.
+
+Model line-ups change. `GET /api/admin/providers/<id>/models` lists what a key can reach
+today; update `MODELS` and `ROUTES` in `catalog.ts` to match.
 
 ## Measurements
 
-All three need `TOLLGATE_URL` and `ADMIN_TOKEN` in the environment.
+All four need `TOLLGATE_URL` and `ADMIN_TOKEN` in the environment.
 
 ```bash
 npm run loadtest                      # latency and rate-limit exactness, mock upstream
 npm run eval:cache                    # the labelled pairs through embedder and judge
 npx tsx scripts/index-delay.ts 6      # seconds until a new vector is searchable
+npx tsx scripts/providers.ts          # real requests through every configured model and route
 ```
 
 ## Adding a provider
@@ -94,6 +101,6 @@ src/worker/     the gateway
 src/app/        the dashboard (React)
 src/shared/     types shared by both
 migrations/     D1 schema
-scripts/        load test, cache evaluation, index delay
+scripts/        load test, cache evaluation, index delay, provider run
 test/
 ```

@@ -396,6 +396,17 @@ describe("the public demo key", () => {
     expect((await completion(tooLong)).error?.code).toBe("demo_prompt_too_long");
   });
 
+  it("is refused providers it may not spend, by name and inside routes", async () => {
+    const direct = await chat("gemini/gemini-3.5-flash-lite", "hi");
+    expect(direct.status).toBe(403);
+    expect((await completion(direct)).error?.code).toBe("not_available_on_demo_key");
+    // In a route the provider is simply left out; here nothing else is configured behind it.
+    expect((await chat("smart", "hi")).status).toBe(403);
+    const listed = (await (await call("/api/health")).json()) as { providers: { id: string; demo: boolean; paid: boolean }[] };
+    expect(listed.providers.find((p) => p.id === "openai")).toMatchObject({ paid: true, demo: false });
+    expect(listed.providers.find((p) => p.id === "groq")).toMatchObject({ paid: false, demo: true });
+  });
+
   it("ends the outage demo with the mock's canned reply when no real upstream is configured, and never caches it", async () => {
     const address = newAddress();
     for (let i = 0; i < 2; i++) {

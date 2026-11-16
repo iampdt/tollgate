@@ -42,13 +42,13 @@ The response is the OpenAI shape plus a `tollgate` object:
     "cache": "miss",
     "similarity": null,
     "judged": null,
-    "provider": "workers-ai",
-    "model": "@cf/meta/llama-3.2-3b-instruct",
-    "attempts": [{ "target": "workers-ai/@cf/meta/llama-3.2-3b-instruct", "outcome": "ok", "ms": 311 }],
-    "cost_micros": 69,
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b",
+    "attempts": [{ "target": "groq/openai/gpt-oss-20b", "outcome": "ok", "ms": 420 }],
+    "cost_micros": 63,
     "saved_micros": 0,
-    "latency_ms": 1380,
-    "first_token_ms": 354,
+    "latency_ms": 513,
+    "first_token_ms": 463,
     "overhead_ms": 43,
     "admit_ms": 43,
     "cache_ms": 5
@@ -83,6 +83,7 @@ OpenAI's error shape: `{"error": {"message", "type", "code"}}`.
 | 400 | `invalid_request` | The body failed validation; the message names the field |
 | 400 | `upstream_rejected_request` | An upstream called the request invalid; not retried elsewhere |
 | 401 | `invalid_api_key` | Missing or unknown key |
+| 403 | `not_available_on_demo_key` | The model or route uses only providers the public demo key may not spend |
 | 404 | `model_not_found` | Not a route and not in the catalog |
 | 413 | `request_too_large` | Body over 256 KB |
 | 429 | `rate_limited` | Over requests per minute; see `Retry-After` |
@@ -119,6 +120,7 @@ Authenticated with the same API key; each key sees only its own data.
 | `GET /api/admin/keys` | List keys (prefix only) |
 | `DELETE /api/admin/keys/:id` | Revoke. A revoked key can keep working for up to 30 s in isolates that remember it. |
 | `POST /api/admin/similarity` | `{pairs: [[a, b], …], judge: true}` → similarity and judge verdict per pair (up to 20) |
+| `GET /api/admin/providers/:id/models` | The model ids that provider's key can reach, for keeping the catalog current |
 | `POST /api/admin/latency` | Time each storage call from inside the Worker |
 | `POST /api/admin/index-probe` | Insert or query a probe vector, for measuring index delay |
 | `POST /api/admin/breakers/reset` | Close every circuit |

@@ -78,7 +78,7 @@ export type BreakerState = "closed" | "open" | "half_open";
 
 export interface Health {
   routes: { name: string; description: string; targets: { target: string; configured: boolean; state: BreakerState }[] }[];
-  providers: { id: string; configured: boolean; needs: string | null }[];
+  providers: { id: string; configured: boolean; needs: string | null; paid: boolean; demo: boolean }[];
   semanticCache: { embedder: string; index: string; judge: string | null };
 }
 

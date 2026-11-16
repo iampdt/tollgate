@@ -13,6 +13,8 @@ export interface ChatParams {
   top_p?: number;
   max_tokens?: number;
   stop?: string[];
+  /** Provider-specific fields for this model, merged into the request as they are. */
+  extra?: Record<string, unknown>;
 }
 
 export interface TokenUsage {
@@ -52,6 +54,9 @@ export function kindForStatus(status: number): FailureKind {
   if (status === 401 || status === 403) return "auth";
   if (status === 408 || status === 504) return "timeout";
   if (status >= 500) return "server";
+  // Not found or not allowed is about this upstream (a model name it no longer has), not
+  // about the caller's request, so the route should carry on.
+  if (status === 404 || status === 405) return "server";
   return "bad_request";
 }
 

@@ -4,9 +4,10 @@ import { chat, type ChatInput, type ChatResult, dollars, ms } from "../lib/api";
 import { Attempts, ErrorNote, Fact, Status } from "../ui";
 
 const ROUTES = [
-  { id: "fast", label: "fast — small models" },
-  { id: "smart", label: "smart — largest free models" },
+  { id: "fast", label: "fast — Groq first, then Cloudflare's small models" },
   { id: "demo-outage", label: "demo-outage — first upstream is always down" },
+  { id: "smart", label: "smart — Gemini, Groq, Cloudflare (your own key)" },
+  { id: "premium", label: "premium — OpenAI first (your own key)" },
   { id: "mock/echo", label: "mock/echo — repeats your prompt, costs nothing" },
 ];
 
@@ -34,7 +35,7 @@ interface Scenario {
 const SCENARIOS: Scenario[] = [
   {
     title: "1. Ask a question",
-    about: "A real model answers. If someone asked this today it is already cached; either way, ask it twice and the second answer comes back in tens of milliseconds.",
+    about: "A real model answers, usually on Groq, with Cloudflare's behind it. If someone asked this today it is already cached; either way, ask it twice and the second answer comes back in tens of milliseconds.",
     input: () => ({ model: "fast", prompt: QUESTION, cache: "semantic", stream: true, ttlSeconds: SAMPLE_TTL }),
   },
   {
@@ -49,7 +50,7 @@ const SCENARIOS: Scenario[] = [
   },
   {
     title: "4. Break the first provider",
-    about: "This route's first upstream always fails. The gateway moves to the next one; after five failures it stops calling the broken one at all for 30 seconds.",
+    about: "This route's first upstream always fails. The gateway moves to the next one, at a different company; press it six times and it stops calling the broken one at all for 30 seconds.",
     input: () => ({ model: "demo-outage", prompt: "Say hello in exactly five words.", cache: "off", stream: true }),
   },
 ];

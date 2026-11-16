@@ -1,20 +1,20 @@
 target: https://tollgate.iampdt.workers.dev
 
-No cache: 400 requests, 20 at a time, 400 answered, 163 requests/s
-  seen by the client                 p50   92 ms   p95  262 ms   p99  581 ms
-  inside the gateway                 p50   59 ms   p95  137 ms   p99  476 ms
-  of which: rate limit and budget    p50   46 ms   p95  129 ms   p99  476 ms
+No cache: 400 requests, 20 at a time, 400 answered, 170 requests/s
+  seen by the client                 p50   86 ms   p95  242 ms   p99  580 ms
+  inside the gateway                 p50   60 ms   p95  137 ms   p99  486 ms
+  of which: rate limit and budget    p50   50 ms   p95  124 ms   p99  486 ms
 
-Exact cache, every request a miss: 400 requests, 20 at a time, 400 answered, 164 requests/s
-  seen by the client                 p50   86 ms   p95  316 ms   p99  705 ms
-  inside the gateway                 p50   59 ms   p95  118 ms   p99  537 ms
-  of which: rate limit and budget    p50   48 ms   p95  113 ms   p99  537 ms
+Exact cache, every request a miss: 400 requests, 20 at a time, 400 answered, 182 requests/s
+  seen by the client                 p50   85 ms   p95  205 ms   p99  490 ms
+  inside the gateway                 p50   60 ms   p95  137 ms   p99  454 ms
+  of which: rate limit and budget    p50   50 ms   p95  126 ms   p99  454 ms
 
-Exact cache, every request a hit: 400 requests, 20 at a time, 400 answered, 224 requests/s
-  seen by the client                 p50   82 ms   p95  122 ms   p99  140 ms
-  inside the gateway                 p50   56 ms   p95   85 ms   p99  105 ms
-  of which: rate limit and budget    p50   45 ms   p95   66 ms   p99  100 ms
+Exact cache, every request a hit: 400 requests, 20 at a time, 400 answered, 227 requests/s
+  seen by the client                 p50   81 ms   p95  121 ms   p99  146 ms
+  inside the gateway                 p50   56 ms   p95   84 ms   p99  114 ms
+  of which: rate limit and budget    p50   48 ms   p95   73 ms   p99  109 ms
 
-Rate limit: 200 requests at once on a key limited to 50 per minute (burst took 0.9 s)
+Rate limit: 200 requests at once on a key limited to 50 per minute (burst took 0.8 s)
   answered 50, refused with 429 150, other 0
   allowed: 50 plus at most 0 refilled during the burst → within the limit

@@ -47,22 +47,22 @@ however it is arranged, and the judge can add more. It is opt-in for that reason
 spent, and deletes the keys afterwards.
 
 ```
-No cache: 400 requests, 20 at a time, 400 answered, 163 requests/s
-  seen by the client                 p50   92 ms   p95  262 ms   p99  581 ms
-  inside the gateway                 p50   59 ms   p95  137 ms   p99  476 ms
-  of which: rate limit and budget    p50   46 ms   p95  129 ms   p99  476 ms
+No cache: 400 requests, 20 at a time, 400 answered, 170 requests/s
+  seen by the client                 p50   86 ms   p95  242 ms   p99  580 ms
+  inside the gateway                 p50   60 ms   p95  137 ms   p99  486 ms
+  of which: rate limit and budget    p50   50 ms   p95  124 ms   p99  486 ms
 
-Exact cache, every request a miss: 400 requests, 20 at a time, 400 answered, 164 requests/s
-  seen by the client                 p50   86 ms   p95  316 ms   p99  705 ms
-  inside the gateway                 p50   59 ms   p95  118 ms   p99  537 ms
-  of which: rate limit and budget    p50   48 ms   p95  113 ms   p99  537 ms
+Exact cache, every request a miss: 400 requests, 20 at a time, 400 answered, 182 requests/s
+  seen by the client                 p50   85 ms   p95  205 ms   p99  490 ms
+  inside the gateway                 p50   60 ms   p95  137 ms   p99  454 ms
+  of which: rate limit and budget    p50   50 ms   p95  126 ms   p99  454 ms
 
-Exact cache, every request a hit: 400 requests, 20 at a time, 400 answered, 224 requests/s
-  seen by the client                 p50   82 ms   p95  122 ms   p99  140 ms
-  inside the gateway                 p50   56 ms   p95   85 ms   p99  105 ms
-  of which: rate limit and budget    p50   45 ms   p95   66 ms   p99  100 ms
+Exact cache, every request a hit: 400 requests, 20 at a time, 400 answered, 227 requests/s
+  seen by the client                 p50   81 ms   p95  121 ms   p99  146 ms
+  inside the gateway                 p50   56 ms   p95   84 ms   p99  114 ms
+  of which: rate limit and budget    p50   48 ms   p95   73 ms   p99  109 ms
 
-Rate limit: 200 requests at once on a key limited to 50 per minute (burst took 0.9 s)
+Rate limit: 200 requests at once on a key limited to 50 per minute (burst took 0.8 s)
   answered 50, refused with 429 150, other 0
 ```
 
@@ -91,13 +91,13 @@ similarity of different questions (40): min 0.667  median 0.857  max 0.992
 
             threshold alone                with the judge
 threshold   rewordings hit   wrong answers   rewordings hit   wrong answers
-0.80        38 / 40          33 / 40          33 / 40           0 / 40
-0.85        36 / 40          22 / 40          31 / 40           0 / 40
-0.88        36 / 40          15 / 40          31 / 40           0 / 40
-0.90        29 / 40           7 / 40          26 / 40           0 / 40
-0.92        25 / 40           6 / 40          23 / 40           0 / 40
+0.80        38 / 40          33 / 40          36 / 40           0 / 40
+0.85        36 / 40          22 / 40          34 / 40           0 / 40
+0.88        36 / 40          15 / 40          34 / 40           0 / 40
+0.90        29 / 40           7 / 40          28 / 40           0 / 40
+0.92        25 / 40           6 / 40          24 / 40           0 / 40
 0.94        18 / 40           4 / 40          17 / 40           0 / 40
-0.95        13 / 40           2 / 40          13 / 40           0 / 40
+0.95        13 / 40           2 / 40          12 / 40           0 / 40
 0.96         8 / 40           1 / 40           8 / 40           0 / 40
 0.98         2 / 40           1 / 40           2 / 40           0 / 40
 ```
@@ -113,11 +113,14 @@ The two distributions overlap almost completely. The most similar *different* qu
 
 With the threshold alone there is no good setting: 0.92 still serves 6 wrong answers and
 already loses 15 of the rewordings. With the judge, the threshold only decides how many
-candidates are worth a judge call, and 0.85 keeps 31 rewordings with no wrong answer.
+candidates are worth a judge call, and 0.85 keeps 34 rewordings with no wrong answer.
 
-Of the 9 rewordings lost at 0.85: 4 were below the threshold, 4 were judge calls that
-gave no verdict within 1.5 s, and 1 the judge turned down ("What is an API?" against
-"What does API stand for and what is it?", which is arguably right).
+Of the 6 rewordings lost at 0.85: 4 were below the threshold, 1 was a judge call that gave
+no verdict within 1.5 s, and 1 the judge turned down ("What is an API?" against "What does
+API stand for and what is it?", which is arguably right).
+
+The count of hits moves between runs, because a slow judge is a miss: an earlier run the
+same day had four late verdicts and kept 31. The count of wrong answers was 0 in every run.
 
 **Other embedding models did not fix it.** The best number of rewordings each could hit
 while serving at most two wrong answers out of 40:
@@ -137,8 +140,8 @@ while serving at most two wrong answers out of 40:
 | `llama-3.2-3b-instruct` | 38 / 40 | 8 / 40 |
 | `llama-3.3-70b-instruct-fp8-fast` | 39 / 40 | 0 / 40 |
 
-(The table above shows 35 accepted for the large judge in the final run rather than 39:
-that run had the 1.5 s limit, and four verdicts arrived too late.)
+(Those two rows were judged without a time limit. With the 1.5 s limit the large judge
+accepted 38 in the run shown above and 35 in the earlier one.)
 
 **Limits of this evaluation.** Eighty pairs, written by me, English, single sentences. Zero
 wrong answers in 40 is consistent with a true rate of several percent. It demonstrates the
@@ -152,7 +155,8 @@ under 0.7 s, slowest 1.9 s.
 
 In the live demo a semantic hit took about 2.0 s end to end (embedding, vector query, a
 cold KV read for the answer, and a slow judge call) and saved generating a 200-token answer. The
-small model on the same route generates that answer in 1.3 to 2 s.
+small Workers AI model that answered on that route then generated the same answer in 1.3 to
+2 s; Groq, which leads the route now, is faster still.
 
 So against a small, fast model the semantic cache saves tokens and not time. It earns its
 latency in front of a slow or expensive model. An exact hit, by contrast, took 44 ms in the
@@ -175,15 +179,52 @@ run 6: searchable after about 17 s
 For up to a minute after an answer is first stored, a rewording of that question is a miss.
 A repeat of the same wording is not affected: the exact cache is written at once.
 
-## 6. Real models through the gateway
+## 6. Real providers through the gateway
 
-Workers AI free tier, non-streaming, cache off:
+`npx tsx scripts/providers.ts` sends real requests through every model the deployment has
+credentials for, with caching off. Keys were set for Groq, Gemini and OpenAI; Workers AI
+needs none.
 
-| Route or model | Prompt | Tokens out | Total |
-| --- | --- | --- | --- |
-| `llama-3.2-3b-instruct` | One-sentence definition | 53 | 1.8 s |
-| `smart` → `llama-3.3-70b-instruct-fp8-fast` | "Reply with exactly: pong" | 2 | 0.5 s |
-| `llama-3.1-8b-instruct-fp8`, streamed | Count from 1 to 5 | 15 | 1.4 s, first token at 0.8 s |
-| `demo-outage` → first upstream fails → `llama-3.2-3b-instruct` | Five-word greeting | 8 | 0.47 s |
+```
+1. Each model, 8 requests one after another, same prompt, 80 tokens at most
+   model                                              answered   first token (median)   whole answer (median)   tokens out (median)   streams
+   workers-ai/llama-3.2-3b-instruct                   8 / 8      395 ms                 653 ms                  51                    yes
+   workers-ai/llama-3.1-8b-instruct-fp8               8 / 8      489 ms                 3067 ms                 54                    yes
+   workers-ai/llama-3.3-70b-instruct-fp8-fast         8 / 8      448 ms                 1321 ms                 44                    yes
+   groq/openai/gpt-oss-20b                            8 / 8      463 ms                 513 ms                  52                    yes
+   groq/openai/gpt-oss-120b                           8 / 8      493 ms                 584 ms                  60                    yes
+   gemini/gemini-3.5-flash-lite                       8 / 8      1156 ms                1353 ms                 39                    yes
+   openai/gpt-4.1-mini                                0 / 8      –                      –                       –                     no   first failure: openai/gpt-4.1-mini rate_limited (429)
 
-Groq, Gemini and OpenRouter were not exercised: no keys were set on this deployment.
+2. Each route once: the upstreams it tried, in order
+   fast     200  groq/openai/gpt-oss-20b ok
+   smart    200  gemini/gemini-3.5-flash-lite ok
+   premium  200  openai/gpt-4.1-mini rate_limited (429) → gemini/gemini-3.5-flash-lite ok
+
+3. 24 requests at once on the "smart" route (its first upstream is a free tier with its own rate limit)
+   answered 24 / 24
+     16 by groq/openai/gpt-oss-120b
+      8 by gemini/gemini-3.5-flash-lite
+     16 × gemini/gemini-3.5-flash-lite rate_limited
+   median time to a whole answer: 1068 ms
+```
+
+**Per model.** Groq is the fastest end to end by a wide margin, which is why it leads the
+`fast` route. Gemini's first token takes about 1.2 s. The 8-billion-parameter model on
+Workers AI starts as quickly as the others and then generates slowly, so it sits last.
+
+**OpenAI answered nothing.** The account behind the key has no credit, and OpenAI refuses
+each call with 429. The adapter, the request and the error handling are exercised; a
+successful OpenAI completion is not. On the `premium` route that refusal is the first
+attempt of every request, and Gemini answers.
+
+**The burst.** Twenty-four requests at once to `smart`, whose first upstream is Gemini's
+free tier. Gemini took 8 and refused 16 with "too many requests". Each refused request moved
+to Groq and was answered there. Callers saw 24 answers and no errors.
+
+**A timeout that changed a default.** In the first run of this script, Gemini accepted one
+request and sent nothing. The caller waited the full first-token timeout, then 12 s, before
+Groq answered. With the slowest provider's median first token at 1.2 s, 12 s was far too
+patient. The timeout is now 6 s.
+
+xAI and OpenRouter have no key on this deployment and were not exercised.

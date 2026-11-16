@@ -6,22 +6,19 @@ similarity of different questions (40): min 0.667  median 0.857  max 0.992
 
             threshold alone                with the judge
 threshold   rewordings hit   wrong answers   rewordings hit   wrong answers
-0.80        38 / 40          33 / 40          33 / 40           0 / 40
-0.85        36 / 40          22 / 40          31 / 40           0 / 40
-0.88        36 / 40          15 / 40          31 / 40           0 / 40
-0.90        29 / 40           7 / 40          26 / 40           0 / 40
-0.92        25 / 40           6 / 40          23 / 40           0 / 40
+0.80        38 / 40          33 / 40          36 / 40           0 / 40
+0.85        36 / 40          22 / 40          34 / 40           0 / 40
+0.88        36 / 40          15 / 40          34 / 40           0 / 40
+0.90        29 / 40           7 / 40          28 / 40           0 / 40
+0.92        25 / 40           6 / 40          24 / 40           0 / 40
 0.94        18 / 40           4 / 40          17 / 40           0 / 40
-0.95        13 / 40           2 / 40          13 / 40           0 / 40
+0.95        13 / 40           2 / 40          12 / 40           0 / 40
 0.96         8 / 40           1 / 40           8 / 40           0 / 40
 0.98         2 / 40           1 / 40           2 / 40           0 / 40
 
-judge alone: accepted 35 / 40 rewordings, 0 / 40 different questions
+judge alone: accepted 38 / 40 rewordings, 0 / 40 different questions
 rewordings the judge turned down:
-  (no verdict in time) How do I install Python on macOS?  |  What's the way to set up Python on a Mac?
-  (no verdict in time) Explain recursion to a beginner.  |  How would you explain recursion to someone new to programming?
-  (no verdict in time) What is machine learning?  |  Can you explain what machine learning is?
-  (no verdict in time) What is the speed of light?  |  How fast does light travel?
+  (no verdict in time) Write a haiku about autumn.  |  Compose a haiku on the theme of autumn.
   What is an API?  |  What does API stand for and what is it?
 
 most similar different questions:

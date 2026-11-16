@@ -92,9 +92,14 @@ export async function chat(request: Request, env: AppEnv, ctx: ExecutionContext)
   }
 
   const providers = configuredProviders(env);
-  const route = resolve(parsed.model, providers);
+  const route = resolve(parsed.model, providers, key.demo);
   if (!route) return fail(404, "model_not_found", `Unknown model "${parsed.model}". GET /v1/models lists the routes and models.`);
-  if (route.targets.length === 0) return fail(503, "no_upstream_configured", `No provider behind "${parsed.model}" has credentials on this deployment.`);
+  if (route.targets.length === 0) {
+    // Known to the full catalog but empty for this key: the demo key was refused a provider.
+    return (resolve(parsed.model, providers)?.targets.length ?? 0) > 0
+      ? fail(403, "not_available_on_demo_key", `"${parsed.model}" uses a provider the public demo key may not spend. Use a key of your own.`)
+      : fail(503, "no_upstream_configured", `No provider behind "${parsed.model}" has credentials on this deployment.`);
+  }
 
   const messages: Message[] = parsed.messages.map((m) => ({ role: m.role === "developer" ? "system" : m.role, content: m.content }));
   const params: Omit<ChatParams, "model"> = {
@@ -264,7 +269,7 @@ export async function chat(request: Request, env: AppEnv, ctx: ExecutionContext)
   const deps: RouterDeps = {
     providers,
     breaker: circuits,
-    firstTokenTimeoutMs: numberSetting(env.FIRST_TOKEN_TIMEOUT_MS, 12_000),
+    firstTokenTimeoutMs: numberSetting(env.FIRST_TOKEN_TIMEOUT_MS, 6_000),
     signal: overall.signal,
     now: Date.now,
   };

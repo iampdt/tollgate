@@ -133,6 +133,14 @@ describe("the catalog", () => {
     expect(resolve("workers-ai/@cf/meta/llama-3.2-3b-instruct", withAi)?.targets[0]).toMatchObject({ provider: "workers-ai", model: "@cf/meta/llama-3.2-3b-instruct" });
   });
 
+  it("leaves out providers the demo key may not spend", () => {
+    const all = new Map<string, Provider>([["mock", mock()], ["groq", mock()], ["gemini", mock()], ["openai", mock()], ["workers-ai", mock()]]);
+    expect(resolve("premium", all)?.targets.map((t) => t.provider)).toEqual(["openai", "gemini", "groq", "workers-ai"]);
+    expect(resolve("premium", all, true)?.targets.map((t) => t.provider)).toEqual(["groq", "workers-ai"]);
+    expect(resolve("openai/gpt-4.1-mini", all, true)?.targets).toEqual([]);
+    expect(resolve("fast", all, true)?.targets.map((t) => t.provider)).toEqual(["groq", "workers-ai", "workers-ai"]);
+  });
+
   it("does not know models outside the catalog", () => {
     expect(resolve("workers-ai/@cf/openai/gpt-oss-120b", providers)).toBeNull();
     expect(resolve("nope", providers)).toBeNull();
@@ -145,7 +153,7 @@ describe("the catalog", () => {
   it("prices tokens in millionths of a dollar", () => {
     // 1,000 in at $0.293 per million and 500 out at $2.253 per million.
     expect(costMicros("workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast", 1000, 500)).toBe(Math.round(293 + 1126.5));
-    expect(costMicros("groq/llama-3.1-8b-instant", 1000, 500)).toBe(0);
+    expect(costMicros("somewhere/unpriced-model", 1000, 500)).toBe(0);
   });
 });
 
@@ -207,7 +215,7 @@ describe("the OpenAI-compatible adapter", () => {
         ),
       );
     }) as unknown as typeof fetch;
-    const result = await collect(openAiCompatible("groq", "https://x.test/v1", "secret", fetcher).stream(params, signal()));
+    const result = await collect(openAiCompatible("groq", "https://x.test/v1", "secret", { fetcher }).stream(params, signal()));
     expect(result.text).toBe("Hello");
     expect(result.parts.find((p) => p.finish)?.finish).toBe("length");
     expect(result.parts.find((p) => p.usage)?.usage).toEqual({ promptTokens: 7, completionTokens: 2 });
@@ -220,21 +228,37 @@ describe("the OpenAI-compatible adapter", () => {
     [503, "server"],
     [401, "auth"],
     [400, "bad_request"],
+    [404, "server"],
     [504, "timeout"],
   ])("turns HTTP %i into a %s failure", async (status, kind) => {
     const fetcher = (async () => new Response("nope", { status })) as unknown as typeof fetch;
-    const error = await collect(openAiCompatible("x", "https://x.test", "k", fetcher).stream(params, signal())).catch((e: unknown) => e);
+    const error = await collect(openAiCompatible("x", "https://x.test", "k", { fetcher }).stream(params, signal())).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ProviderError);
     expect(error).toMatchObject({ kind, status });
+  });
+
+  it("names the token limit the way the provider wants it, and adds the model's extra fields", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const fetcher = (async (_url: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)));
+      return new Response(bytes("data: [DONE]\n\n", 1));
+    }) as unknown as typeof fetch;
+    const limited = { ...params, max_tokens: 64, extra: { reasoning_effort: "low" } };
+    await collect(openAiCompatible("groq", "https://x.test", "k", { fetcher }).stream(limited, signal()));
+    await collect(openAiCompatible("openai", "https://x.test", "k", { fetcher, maxTokensField: "max_completion_tokens" }).stream(limited, signal()));
+    expect(bodies[0]).toMatchObject({ max_tokens: 64, reasoning_effort: "low", stream: true });
+    expect(bodies[0]).not.toHaveProperty("extra");
+    expect(bodies[1]).toMatchObject({ max_completion_tokens: 64, reasoning_effort: "low" });
+    expect(bodies[1]).not.toHaveProperty("max_tokens");
   });
 
   it("reports a network failure, and an error sent inside the stream", async () => {
     const down = (async () => {
       throw new TypeError("connection refused");
     }) as unknown as typeof fetch;
-    await expect(collect(openAiCompatible("x", "https://x.test", "k", down).stream(params, signal()))).rejects.toMatchObject({ kind: "network" });
+    await expect(collect(openAiCompatible("x", "https://x.test", "k", { fetcher: down }).stream(params, signal()))).rejects.toMatchObject({ kind: "network" });
     const inline = (async () => new Response(bytes('data: {"error":{"message":"overloaded"}}\n\n', 1))) as unknown as typeof fetch;
-    await expect(collect(openAiCompatible("x", "https://x.test", "k", inline).stream(params, signal()))).rejects.toMatchObject({ kind: "server", message: "overloaded" });
+    await expect(collect(openAiCompatible("x", "https://x.test", "k", { fetcher: inline }).stream(params, signal()))).rejects.toMatchObject({ kind: "server", message: "overloaded" });
   });
 });
 

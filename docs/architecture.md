@@ -22,7 +22,7 @@ flowchart TB
   CA --> K[(KV)]
   CA --> AI[Workers AI<br/>embeddings, judge]
   P --> AI
-  P --> EXT[Groq · Gemini · OpenRouter]
+  P --> EXT[Groq · Gemini · OpenAI · xAI · OpenRouter]
   CH -.-> D[(D1)]
 ```
 
@@ -84,7 +84,21 @@ Failures are a `ProviderError` with a kind: `timeout`, `rate_limited`, `server`,
 | `aborted` (caller left) | no | no |
 
 A request an upstream calls invalid is not sent elsewhere: it would be invalid there too, and
-each try spends quota.
+each try spends quota. (A 404 is not that: it means the upstream no longer has the model, and
+the route carries on.)
+
+Every provider except Workers AI goes through one OpenAI-compatible adapter. Two things vary
+per provider or model and live in the catalog: the name of the token-limit field, and extra
+request fields such as a low reasoning effort for models that think before answering.
+
+Routes on this deployment, ordered by measured latency:
+
+| Route | Upstreams, in order |
+| --- | --- |
+| `fast` | Groq `gpt-oss-20b` → Workers AI `llama-3.2-3b` → Workers AI `llama-3.1-8b` |
+| `smart` | Gemini `gemini-3.5-flash-lite` → Groq `gpt-oss-120b` → Workers AI `llama-3.3-70b` → Workers AI `llama-3.1-8b` |
+| `premium` | OpenAI `gpt-4.1-mini` → Gemini → Groq `gpt-oss-120b` → Workers AI `llama-3.3-70b` |
+| `demo-outage` | a mock that always fails → Groq `gpt-oss-20b` → Workers AI `llama-3.2-3b` → a canned reply |
 
 ## Rate limit and budget
 
@@ -98,7 +112,8 @@ lock and no compare-and-set, and a burst cannot oversubscribe the bucket.
 
 The public demo key uses two gates per request, one per visitor (by a hash of the address)
 and one shared by all visitors, so one person cannot use up everyone's allowance and
-everyone together cannot use up the free model quota.
+everyone together cannot use up the free model quota. It may also only spend Workers AI and
+Groq; upstreams at other providers are left out of its routes.
 
 ## Circuit breaker
 

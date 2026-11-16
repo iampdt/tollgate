@@ -1,7 +1,7 @@
 // Tries a route's upstreams in order until one starts answering.
 
 import type { Attempt, BreakerState, FailureKind } from "../shared/api";
-import type { Target } from "./catalog";
+import { extraFor, type Target } from "./catalog";
 import { type ChatParams, type Part, type Provider, ProviderError } from "./providers/base";
 
 export interface RouterDeps {
@@ -68,7 +68,7 @@ export async function open(
     const cancel = () => controller.abort();
     deps.signal.addEventListener("abort", cancel, { once: true });
     const startedAt = deps.now();
-    const stream = provider.stream({ ...params, model: target.model }, controller.signal);
+    const stream = provider.stream({ ...params, model: target.model, extra: extraFor(target.id) }, controller.signal);
 
     let timer: ReturnType<typeof setTimeout> | null = null;
     try {

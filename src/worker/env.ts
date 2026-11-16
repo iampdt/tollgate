@@ -14,7 +14,11 @@ export interface AppEnv {
   /** Guards /api/admin. Without it the admin API is switched off. */
   ADMIN_TOKEN?: string;
   GROQ_API_KEY?: string;
+  /** Either an xAI key (xai-…) or a Groq key (gsk_…) stored under this name; the prefix decides. */
+  GROK_API_KEY?: string;
+  XAI_API_KEY?: string;
   GEMINI_API_KEY?: string;
+  OPENAI_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
 }
 

@@ -27,7 +27,7 @@ counting inside each Worker isolate, which is free and fast and lets a burst thr
 a component whose job is to enforce a budget I chose exact.
 
 **Would revisit.** One key under very high concurrency queues on its one object (the 95th
-percentile in the load test was 129 ms for this step). Sharding a key across several
+percentile in the load test was about 125 ms for this step). Sharding a key across several
 objects with a slice of the limit each would trade exactness for throughput.
 
 ## 3. Three checks at once
@@ -79,10 +79,14 @@ after a failure half-way through.
 
 ## 7. A rejected request is not retried elsewhere
 
-If an upstream answers 400, the next one almost certainly will too, and each attempt costs
+If an upstream answers 400 (or 413, or 422), the next one almost certainly will too, and each attempt costs
 quota. The one case this gets wrong is a prompt too long for a small model that a larger
 one would have accepted. I would handle that by knowing each model's context length up
 front rather than by retrying on 400.
+
+A 404 is different and does move on. It means this upstream no longer has that model,
+which is about my catalog, not the caller's request. Two of the model names I first wrote
+down had been retired by the time I had keys to try them.
 
 ## 8. Count tokens after the answer, not before
 
@@ -103,3 +107,27 @@ demo where a visitor can watch a provider fail. The canned reply is never cached
 A trace is for answering "what happened to this request?", and that never needs the text.
 Leaving it out removes the question of who may read traces. A test stores a request
 containing a marker string and asserts the marker is nowhere in the stored row.
+
+## 11. Route order from measurement, and a first-token timeout to match
+
+With keys for Groq and Gemini set, I sent the same prompt through every model eight times.
+Groq returned a whole answer in about 0.5 s, Workers AI's small and large models in 0.7 and
+1.3 s, Gemini in 1.4 s, and Workers AI's 8B model in 3.1 s. The routes are ordered by that.
+
+The first-token timeout started at 12 s, a guess. In the first provider run Gemini accepted
+a request and sent nothing, and the caller waited all 12 s before Groq answered. The slowest
+median first token I measured was 1.2 s, so the timeout is now 6 s.
+
+**Cost.** A model that thinks for a long time before its first token would be cut off. The
+catalog asks reasoning models for low effort for the same reason.
+
+## 12. The demo key spends only what is the demo's to spend
+
+Every provider has a flag for whether the public key may use it. Workers AI and Groq are
+open to it: their free quotas belong to this deployment alone. Gemini is not, because its
+free quota may be shared with other projects on the same account, and OpenAI is not, because
+it is billed. For the demo key those upstreams are left out of every route, and asking for
+one by name returns 403.
+
+**Cost.** A visitor cannot try the `smart` or `premium` routes without a key of their own.
+The alternative was a stranger's burst deciding whether my other projects could reach Gemini.

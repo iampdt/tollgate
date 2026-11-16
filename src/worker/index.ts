@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { DEMO_KEY, type Health, type Usage } from "../shared/api";
 import { EMBEDDING_MODEL, cosine, semanticBackends, sweep } from "./cache";
-import { configuredProviders, MODELS, PROVIDERS, ROUTES } from "./catalog";
+import { configuredProviders, MODELS, providerKeys, PROVIDERS, ROUTES } from "./catalog";
 import { chat } from "./chat";
 import type { AppEnv } from "./env";
 import { CORS, fail, json } from "./http";
@@ -49,7 +49,7 @@ async function health(env: AppEnv): Promise<Health> {
         state: states[target] ?? "closed",
       })),
     })),
-    providers: PROVIDERS.map((p) => ({ id: p.id, configured: providers.has(p.id), needs: p.needs })),
+    providers: PROVIDERS.map((p) => ({ id: p.id, configured: providers.has(p.id), needs: p.needs, paid: p.paid, demo: p.demo })),
     semanticCache: { embedder: embedder.id, index: index.id, judge: judge?.id ?? null },
   };
 }
@@ -79,6 +79,17 @@ async function admin(request: Request, env: AppEnv, path: string): Promise<Respo
     const scores = input.pairs.map((_, i) => cosine(vectors[2 * i] ?? [], vectors[2 * i + 1] ?? []));
     const verdicts = judge && input.judge ? await Promise.all(input.pairs.map(([a, b]) => judge.same(a, b))) : null;
     return json({ embedder: embedder.id, judge: judge?.id ?? null, scores, verdicts });
+  }
+  const upstreamModels = /^\/api\/admin\/providers\/([\w-]+)\/models$/.exec(path);
+  if (upstreamModels?.[1] && request.method === "GET") {
+    // The model ids a provider's key can reach, for keeping the catalog current.
+    const info = PROVIDERS.find((p) => p.id === upstreamModels[1]);
+    const key = providerKeys(env)[upstreamModels[1]];
+    if (!info?.baseUrl || !key) return fail(404, "provider_not_configured", "That provider has no key on this deployment.");
+    const response = await fetch(`${info.baseUrl}/models`, { headers: { Authorization: `Bearer ${key}` } });
+    if (!response.ok) return fail(502, "provider_error", `${info.id} answered ${response.status}: ${(await response.text()).slice(0, 200)}`);
+    const listed = (await response.json()) as { data?: { id: string }[] };
+    return json({ provider: info.id, models: (listed.data ?? []).map((m) => m.id).sort() });
   }
   if (path === "/api/admin/breakers/reset" && request.method === "POST") {
     await env.BREAKERS.get(env.BREAKERS.idFromName("global")).reset();
